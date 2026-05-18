@@ -246,9 +246,9 @@ document.getElementById('franceBest').textContent = Math.min(...franceRanks) + '
 document.getElementById('franceWorst').textContent = Math.max(...franceRanks) + 'e';
 document.getElementById('franceAvg').textContent = (franceRanks.reduce((a,b)=>a+b,0) / franceRanks.length).toFixed(1) + 'e';
 
-// ============ SPEED / DURATION ============
-let speedMs = 22000;
-const speedMap = { slow: 22000, normal: 14000, fast: 7000 };
+// ============ SPEED / DURATION (durée TOTALE de l'animation) ============
+let speedMs = 8000;
+const speedMap = { slow: 8000, normal: 5000, fast: 2500 };
 
 // ============ DATASETS ============
 function buildDatasets(metric) {
@@ -284,27 +284,27 @@ function buildDatasets(metric) {
 }
 
 // ============ ANIMATION CHART ============
+// Toutes les courbes démarrent à t=0, chaque point est tracé après index*stagger,
+// la dernière année termine exactement à speedMs (durée totale).
 function makeAnimation() {
+  const totalMs = speedMs;
+  const perPointMs = Math.min(totalMs * 0.18, 700); // durée de tracé de chaque point
+  const staggerMs = (totalMs - perPointMs) / Math.max(years.length - 1, 1);
+
   return {
     x: {
       type: 'number', easing: 'easeOutQuart',
-      duration: (ctx) => {
-        const label = ctx.chart.data.datasets[ctx.datasetIndex]?.label || '';
-        return label.includes('France') ? speedMs : speedMs * 0.75;
-      },
+      duration: () => perPointMs,
       from: NaN,
       delay: (ctx) => {
         if (ctx.type !== 'data' || ctx.xStarted) return 0;
         ctx.xStarted = true;
-        return ctx.index * (speedMs / years.length / 1.5);
+        return ctx.index * staggerMs;
       }
     },
     y: {
       type: 'number', easing: 'easeOutQuart',
-      duration: (ctx) => {
-        const label = ctx.chart.data.datasets[ctx.datasetIndex]?.label || '';
-        return label.includes('France') ? speedMs : speedMs * 0.75;
-      },
+      duration: () => perPointMs,
       from: (ctx) => {
         if (ctx.index === 0) return ctx.chart.scales.y.getPixelForValue(ctx.chart.scales.y.max);
         const prev = ctx.chart.getDatasetMeta(ctx.datasetIndex).data[ctx.index - 1];
@@ -313,7 +313,7 @@ function makeAnimation() {
       delay: (ctx) => {
         if (ctx.type !== 'data' || ctx.yStarted) return 0;
         ctx.yStarted = true;
-        return ctx.index * (speedMs / years.length / 1.5);
+        return ctx.index * staggerMs;
       }
     }
   };
