@@ -284,36 +284,39 @@ function buildDatasets(metric) {
 }
 
 // ============ ANIMATION CHART ============
-// Toutes les courbes démarrent à t=0, chaque point est tracé après index*stagger,
-// la dernière année termine exactement à speedMs (durée totale).
+// Tracé progressif type "ligne qui se dessine" : pas de délai initial,
+// chaque point dure le même temps que l'écart au point suivant → flux continu.
+// Durée totale = speedMs.
 function makeAnimation() {
-  const totalMs = speedMs;
-  const perPointMs = Math.min(totalMs * 0.18, 700); // durée de tracé de chaque point
-  const staggerMs = (totalMs - perPointMs) / Math.max(years.length - 1, 1);
+  const stagger = speedMs / years.length;     // temps entre 2 points
+  const perPoint = stagger;                    // durée d'animation d'un point
 
   return {
     x: {
-      type: 'number', easing: 'easeOutQuart',
-      duration: () => perPointMs,
+      type: 'number', easing: 'linear',
+      duration: () => perPoint,
       from: NaN,
       delay: (ctx) => {
         if (ctx.type !== 'data' || ctx.xStarted) return 0;
         ctx.xStarted = true;
-        return ctx.index * staggerMs;
+        return ctx.index * stagger;
       }
     },
     y: {
-      type: 'number', easing: 'easeOutQuart',
-      duration: () => perPointMs,
+      type: 'number', easing: 'linear',
+      duration: () => perPoint,
       from: (ctx) => {
-        if (ctx.index === 0) return ctx.chart.scales.y.getPixelForValue(ctx.chart.scales.y.max);
+        if (ctx.index === 0) {
+          // 1er point : pas de "drop in", on part directement de sa position finale
+          return ctx.chart.getDatasetMeta(ctx.datasetIndex).data[0]?.y ?? 0;
+        }
         const prev = ctx.chart.getDatasetMeta(ctx.datasetIndex).data[ctx.index - 1];
         return prev ? prev.getProps(['y'], true).y : 0;
       },
       delay: (ctx) => {
         if (ctx.type !== 'data' || ctx.yStarted) return 0;
         ctx.yStarted = true;
-        return ctx.index * staggerMs;
+        return ctx.index * stagger;
       }
     }
   };
